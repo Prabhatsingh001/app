@@ -134,4 +134,8 @@ def Update_Profile(request):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_profile(request):
-    data = request.data
+    user = request.user
+    if user:
+        user.delete()
+        return Response({"message": "User profile deleted successfully."}, status=status.HTTP_200_OK)
+    return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
