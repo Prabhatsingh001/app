@@ -8,8 +8,6 @@ class peopleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-
-
 # FOR SIGN UP
 class SignupSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True, required=True) # Add password2 field for confirmation
