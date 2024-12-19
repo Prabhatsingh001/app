@@ -1,61 +1,11 @@
 from rest_framework.response import Response
-from studybudy.models import person
-from studybudy.serializers import peopleSerializer,SignupSerializer,LoginSerializer,UpdateProfileSerializer
+from .models import CustomUser
+from studybudy.serializers import SignupSerializer,LoginSerializer,UpdateProfileSerializer
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated
-
-
-@api_view(['GET','POST'])
-@permission_classes([AllowAny])
-def people(request):
-    if request.method == 'GET':
-        obj = person.objects.all()
-        serializer = peopleSerializer(obj, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        data = request.data
-        serializer = peopleSerializer(data = data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
-        
-@api_view(['PUT','PATCH'])
-@permission_classes([AllowAny])
-def people_update(request):
-    data = request.data
-    obj = person.objects.get(id=data['id'])
-    serializer = peopleSerializer(obj, data = data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=400)
-
-
-
-@api_view(['PATCH'])
-@permission_classes([AllowAny])
-def partial_update_person(request):
-    data = request.data
-    obj = person.objects.get(id=data['id'])
-    serializer = peopleSerializer(obj, data=data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=200)
-    return Response(serializer.errors, status=400)
-
-
-@api_view(['DELETE'])
-@permission_classes([AllowAny])
-def people_delete(request):
-    data = request.data
-    obj = person.objects.get(id = data['id'])
-    obj.delete()
-    return Response({"message": "person delete"})
 
 
 # for signup
@@ -77,8 +27,21 @@ def signup(request):
 def login(request):
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():
-        user = authenticate(username=serializer.validated_data['username'], password=serializer.validated_data['password'])
-        if user:
+        username_or_email = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        
+        if '@' in username_or_email:
+            try:
+                user = CustomUser.objects.get(email=username_or_email)
+            except CustomUser.DoesNotExist:
+                return Response({'success': False, 'error': 'invalid emial or password'}, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            try:
+                user = CustomUser.objects.get(username=username_or_email)
+            except CustomUser.DoesNotExist:
+                return Response({'success': False, 'error': 'invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        if user.check_password(password):
             refresh = RefreshToken.for_user(user)
             return Response({
                 "success": True,
@@ -103,8 +66,10 @@ def login(request):
 @permission_classes([IsAuthenticated])
 def dashboard(request):
     user  = request.user
+    profile_picture_url = user.profile_picture.url if user.profile_picture else None
     return Response({
         "id" : user.id,
+        "profile_picture": profile_picture_url,
         "username": user.username,
         "email": user.email,
         "first_name": user.first_name,
@@ -139,3 +104,20 @@ def delete_profile(request):
         user.delete()
         return Response({"message": "User profile deleted successfully."}, status=status.HTTP_200_OK)
     return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+#to generate new access token
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])  # Optionally, require the user to be authenticated
+# def refresh_access_token(request):
+#     try:
+#         refresh_token = request.data.get('refresh')
+#         if not refresh_token:
+#             return Response({"detail": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
+#         token = RefreshToken(refresh_token)
+#         new_access_token = str(token.access_token)
+#         return Response({
+#             "access": new_access_token
+#         }, status=status.HTTP_200_OK)
+#     except Exception as e:
+#         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
