@@ -3,9 +3,9 @@ from .models import CustomUser
 from studybudy.serializers import SignupSerializer,LoginSerializer,UpdateProfileSerializer
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework import status
-from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated
+from rest_framework_simplejwt.exceptions import TokenError
 
 
 # for signup
@@ -62,13 +62,6 @@ def login(request):
 
 
 #for logout
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import TokenError
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
@@ -146,3 +139,30 @@ def delete_profile(request):
 #         }, status=status.HTTP_200_OK)
 #     except Exception as e:
 #         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+#to change password
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    user = request.user
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    if user.check_password(old_password):
+        user.set_password(new_password)
+        user.save()
+        return Response({"message": "Password changed successfully."}, status=status.HTTP_200_OK)
+    return Response({"error": "Invalid old password."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+#to reset password
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    email = request.data.get('email')
+    try:
+        user = CustomUser.objects.get(email=email)
+        user.send_reset_password_email()
+        return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
