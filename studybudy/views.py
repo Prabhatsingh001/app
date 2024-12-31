@@ -1,11 +1,20 @@
 from rest_framework.response import Response
 from .models import CustomUser
-from studybudy.serializers import SignupSerializer,LoginSerializer,UpdateProfileSerializer
+from studybudy.serializers import SignupSerializer,LoginSerializer,UpdateProfileSerializer,PasswordResetRequestSerializer,PasswordResetConfirmSerializer
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework.views import APIView
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.urls import reverse
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError
 
 
 # for signup
@@ -155,14 +164,75 @@ def change_password(request):
     return Response({"error": "Invalid old password."}, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+#to request password reset
+class PasswordResetRequestView(APIView):
+    """
+    Request a password reset by sending an email to the user.
+    """
+    permission_classes = [AllowAny]
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            try:
+                user = CustomUser.objects.get(email=email)
+            except CustomUser.DoesNotExist:
+                return Response({"detail": "Email not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generate reset token and uidb64
+            uidb64 = urlsafe_base64_encode(str(user.pk).encode()).decode()
+            token = default_token_generator.make_token(user)
+
+            # Create reset URL
+            reset_url = reverse('password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
+            reset_link = f"{settings.FRONTEND_URL}{reset_url}"
+
+            # Send password reset email
+            subject = "Password Reset Request"
+            message = render_to_string('password_reset_email.html', {
+                'user': user,
+                'reset_link': reset_link,
+            })
+
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+
+            return Response({"message": "Password reset email sent successfully."}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 #to reset password
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def reset_password(request):
-    email = request.data.get('email')
-    try:
-        user = CustomUser.objects.get(email=email)
-        user.send_reset_password_email()
-        return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
-    except CustomUser.DoesNotExist:
-        return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+class PasswordResetConfirmView(APIView):
+    """
+    Confirm the password reset using the token and uidb64 provided in the link.
+    """
+    permission_classes = [AllowAny]
+    def post(self, request, uidb64, token):
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, CustomUser.DoesNotExist):
+            return Response({"detail": "Invalid or expired link."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify the token
+        if not default_token_generator.check_token(user, token):
+            return Response({"detail": "Invalid or expired link."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate the new password
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            new_password = serializer.validated_data['password']
+
+            try:
+                password_validation.validate_password(new_password, user)
+            except ValidationError as e:
+                return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Set the new password
+            user.set_password(new_password)
+            user.save()
+            return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    

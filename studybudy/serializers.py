@@ -63,3 +63,10 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             'username':{'read_only':True},
             'email':{'read_only':True}
         }
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True)
