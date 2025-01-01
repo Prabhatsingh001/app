@@ -13,8 +13,7 @@ from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.urls import reverse
-from django.contrib.auth import password_validation
-from django.core.exceptions import ValidationError
+
 
 
 # for signup
