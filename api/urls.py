@@ -1,5 +1,5 @@
 from studybudy import views
-from UploadNotesOrQuestionPaper.views import create_note
+from UploadNotesOrQuestionPaper.views import create_note, create_question_paper, view_notes, get_question_paper
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -20,6 +20,9 @@ urlpatterns = [
     
     # upload notes and question paper
     path('upload_notes/', create_note),
+    path('upload_question_paper/', create_question_paper),
+    path('view_notes/', view_notes),
+    path('get_question_paper/', get_question_paper),
     
 
     # token refresh for authnetication

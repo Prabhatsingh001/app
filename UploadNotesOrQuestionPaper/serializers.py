@@ -4,7 +4,8 @@ from .models import Notes, QuestionPaper
 class NotesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notes
-        fields = '__all__'
+        fields = ['id', 'sem', 'title', 'file', 'created_at', 'updated_at']  
+        read_only_fields = ['created_at', 'updated_at']
         
     def validate_file(self, value):
         if not value.name.endswith(('.pdf', '.doc', '.docx')):
@@ -16,10 +17,12 @@ class NotesSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Title must be at least 5 characters long.")
         return value
 
+
 class QuestionPaperSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuestionPaper
-        fields = '__all__'
+        fields = ['id', 'sem', 'title', 'file', 'created_at', 'updated_at']  
+        read_only_fields = ['created_at', 'updated_at']
         
     def validate_file(self, value):
         if not value.name.endswith(('.pdf')):

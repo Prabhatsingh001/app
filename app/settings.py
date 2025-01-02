@@ -151,5 +151,5 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 # settings.py
-FRONTEND_URL = ""
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# FRONTEND_URL = ""
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
