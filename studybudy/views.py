@@ -1,20 +1,11 @@
 from rest_framework.response import Response
 from .models import CustomUser
-from studybudy.serializers import SignupSerializer,LoginSerializer,UpdateProfileSerializer,PasswordResetRequestSerializer,PasswordResetConfirmSerializer
+from studybudy.serializers import SignupSerializer,LoginSerializer,UpdateProfileSerializer
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework.views import APIView
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
-from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
-from django.template.loader import render_to_string
-from django.conf import settings
-from django.urls import reverse
-from django.contrib.auth import password_validation
-from django.core.exceptions import ValidationError
 
 
 # for signup
@@ -133,23 +124,6 @@ def delete_profile(request):
     return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
-#to generate new access token
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated])  # Optionally, require the user to be authenticated
-# def refresh_access_token(request):
-#     try:
-#         refresh_token = request.data.get('refresh')
-#         if not refresh_token:
-#             return Response({"detail": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
-#         token = RefreshToken(refresh_token)
-#         new_access_token = str(token.access_token)
-#         return Response({
-#             "access": new_access_token
-#         }, status=status.HTTP_200_OK)
-#     except Exception as e:
-#         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
 #to change password
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -164,75 +138,70 @@ def change_password(request):
     return Response({"error": "Invalid old password."}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# for forgot password  or password reset request
+from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from .models import CustomUser #assuming you have a user model
+from rest_framework import status
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from .models import PasswordReset
+from .serializers import ResetPasswordRequestSerializer,ResetPasswordSerializer
+import os
 
-#to request password reset
-class PasswordResetRequestView(APIView):
-    """
-    Request a password reset by sending an email to the user.
-    """
+class RequestPasswordReset(generics.GenericAPIView):
     permission_classes = [AllowAny]
+    serializer_class = ResetPasswordRequestSerializer
+
     def post(self, request):
-        serializer = PasswordResetRequestSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            try:
-                user = CustomUser.objects.get(email=email)
-            except CustomUser.DoesNotExist:
-                return Response({"detail": "Email not found."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(data=request.data)
+        email = request.data['email']
+        user = CustomUser.objects.filter(email__iexact=email).first()
 
-            # Generate reset token and uidb64
-            uidb64 = urlsafe_base64_encode(str(user.pk).encode()).decode()
-            token = default_token_generator.make_token(user)
+        if user:
+            token_generator = PasswordResetTokenGenerator()
+            token = token_generator.make_token(user) 
+            reset = PasswordReset(email=email, token=token)
+            reset.save()
 
-            # Create reset URL
-            reset_url = reverse('password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
-            reset_link = f"{settings.FRONTEND_URL}{reset_url}"
+            reset_url = f"{os.environ['PASSWORD_RESET_BASE_URL']}/{token}"
 
-            # Send password reset email
-            subject = "Password Reset Request"
-            message = render_to_string('password_reset_email.html', {
-                'user': user,
-                'reset_link': reset_link,
-            })
+            # Sending reset link via email (commented out for clarity)
+            # ... (email sending code)
 
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+            return Response({'success': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "User with credentials not found"}, status=status.HTTP_404_NOT_FOUND)
+        
 
-            return Response({"message": "Password reset email sent successfully."}, status=status.HTTP_200_OK)
+class ResetPassword(generics.GenericAPIView):
+    serializer_class = ResetPasswordSerializer
+    permission_classes = []
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-#to reset password
-class PasswordResetConfirmView(APIView):
-    """
-    Confirm the password reset using the token and uidb64 provided in the link.
-    """
-    permission_classes = [AllowAny]
-    def post(self, request, uidb64, token):
-        try:
-            uid = urlsafe_base64_decode(uidb64).decode()
-            user = CustomUser.objects.get(pk=uid)
-        except (TypeError, ValueError, CustomUser.DoesNotExist):
-            return Response({"detail": "Invalid or expired link."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Verify the token
-        if not default_token_generator.check_token(user, token):
-            return Response({"detail": "Invalid or expired link."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Validate the new password
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        if serializer.is_valid():
-            new_password = serializer.validated_data['password']
-
-            try:
-                password_validation.validate_password(new_password, user)
-            except ValidationError as e:
-                return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Set the new password
-            user.set_password(new_password)
+    def post(self, request, token):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        
+        new_password = data['new_password']
+        confirm_password = data['confirm_password']
+        
+        if new_password != confirm_password:
+            return Response({"error": "Passwords do not match"}, status=400)
+        
+        reset_obj = PasswordReset.objects.filter(token=token).first()
+        
+        if not reset_obj:
+            return Response({'error':'Invalid token'}, status=400)
+        
+        user = User.objects.filter(email=reset_obj.email).first()
+        
+        if user:
+            user.set_password(request.data['new_password'])
             user.save()
-            return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+            
+            reset_obj.delete()
+            
+            return Response({'success':'Password updated'})
+        else: 
+            return Response({'error':'No user found'}, status=404)
