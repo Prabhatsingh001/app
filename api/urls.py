@@ -1,31 +1,35 @@
 from studybudy import views
 from UploadNotesOrQuestionPaper.views import create_note, create_question_paper, view_notes, get_question_paper
+from feedback.views import FeedbackAPI
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
 urlpatterns = [
     # signup login and logout
-    path('signup/', views.signup),
-    path('login/', views.login),
-    path('logout/', views.logout),
-    path('delete_profile_picture/', views.delete_profile_picture),
+    path('signup/', views.signup,name='signup'),
+    path('login/', views.login,name='login'),
+    path('logout/', views.logout,name='logout'),
+    path('delete_profile_picture/', views.delete_profile_picture, name='delete_profile_picture'),
 
     # forgot password and change password
-    path('change_password/', views.change_password),
+    path('change_password/', views.change_password,name='change_password'),
 
     # dashboard and profile
-    path('dashboard/', views.dashboard),
-    path('update_profile/', views.Update_Profile),
-    path('delete_profile', views.delete_profile),
+    path('dashboard/', views.dashboard,name='dashboard'),
+    path('update_profile/', views.Update_Profile,name='update_profile'),
+    path('delete_profile', views.delete_profile,name='delete_profile'),
     
     # upload notes and question paper
-    path('upload_notes/', create_note),
-    path('upload_question_paper/', create_question_paper),
-    path('view_notes/', view_notes),
-    path('get_question_paper/', get_question_paper),
+    path('upload_notes/', create_note,name='upload_notes'),
+    path('upload_question_paper/', create_question_paper,name='upload_question_paper'),
+    path('view_notes/', view_notes,name='view_notes'),
+    path('get_question_paper/', get_question_paper,name='get_question_paper'),
     
+    # feedback
+    path('feedback/', FeedbackAPI.as_view(),name='feedback'),
 
-    # token refresh for authnetication
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # token refresh for authentication
+    path('token/refresh/', TokenRefreshView.as_view(),name='token_refresh'),
 ]
