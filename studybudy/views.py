@@ -123,6 +123,15 @@ def delete_profile(request):
         return Response({"message": "User profile deleted successfully."}, status=status.HTTP_200_OK)
     return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
+#to delete user profile picture
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_profile_picture(request):
+    user = request.user
+    if user.profile_picture:
+        user.profile_picture.delete()
+        return Response({"message": "Profile picture deleted successfully."}, status=status.HTTP_200_OK)
+    return Response({"error": "Profile picture not found."}, status=status.HTTP_404_NOT_FOUND)
 
 #to change password
 @api_view(['POST'])
@@ -194,7 +203,7 @@ class ResetPassword(generics.GenericAPIView):
         if not reset_obj:
             return Response({'error':'Invalid token'}, status=400)
         
-        user = User.objects.filter(email=reset_obj.email).first()
+        user = CustomUser.objects.filter(email=reset_obj.email).first()
         
         if user:
             user.set_password(request.data['new_password'])

@@ -33,17 +33,22 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'studybudy',
-    'summarize',
-    'UploadNotesOrQuestionPaper',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+]
+
+EXTERNAL_APPS = [
+    'studybudy',
+    'summarize',
+    'UploadNotesOrQuestionPaper',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
+
+INSTALLED_APPS += EXTERNAL_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
