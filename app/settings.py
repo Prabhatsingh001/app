@@ -46,6 +46,7 @@ EXTERNAL_APPS = [
     'UploadNotesOrQuestionPaper',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 INSTALLED_APPS += EXTERNAL_APPS
