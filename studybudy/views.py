@@ -102,10 +102,10 @@ def dashboard(request):
 @api_view(['PUT','PATCH'])
 @permission_classes([IsAuthenticated])
 def Update_Profile(request):
-    user = request.user
+    user = CustomUser.objects.get(id = request.user.id)
     serializer = UpdateProfileSerializer(user, data=request.data, partial = True)
     if serializer.is_valid():
-        serializer.save()
+        serializer.save()            
         return Response({
             "message" : "Profile updated successfully",
             "user" : serializer.data
