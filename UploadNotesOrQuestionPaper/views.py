@@ -16,6 +16,7 @@ def create_note(request):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_question_paper(request):
@@ -26,6 +27,7 @@ def create_question_paper(request):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def view_notes(request):
@@ -33,9 +35,11 @@ def view_notes(request):
     serializer = NotesSerializer(notes, many=True)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_question_paper(request):
     question_paper = QuestionPaper.objects.all()
     serializer = QuestionPaperSerializer(question_paper, many=True)
     return Response(serializer.data)
+
