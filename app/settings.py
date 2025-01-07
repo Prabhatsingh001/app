@@ -44,6 +44,7 @@ EXTERNAL_APPS = [
     'studybudy',
     'summarize',
     'UploadNotesOrQuestionPaper',
+    'CgCalculator',
     'feedback',
     'rest_framework',
     'rest_framework_simplejwt',
