@@ -1,17 +1,45 @@
 from rest_framework import serializers
-from .models import CustomUser
+from django.contrib.auth import get_user_model
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
+from phonenumber_field.serializerfields import PhoneNumberField
 
-
-# FOR SIGN UP
+CustomUser = get_user_model()
 class SignupSerializer(serializers.ModelSerializer):
-    password2 = serializers.CharField(write_only=True, required=True) # Add password2 field for confirmation
+    id = serializers.IntegerField(read_only=True)
+    email = serializers.EmailField(max_length=80)
+    username = serializers.CharField(max_length=20)
+    gender = serializers.CharField(max_length=10,)
+    phone_number = PhoneNumberField(allow_null=True, allow_blank=True)
+    date_of_birth = serializers.DateField()
+    profile_picture = serializers.ImageField()
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+    password = serializers.CharField(min_length=8, write_only=True, required=True)
+    password2 = serializers.CharField(min_length=8, write_only=True, required=True)
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password','password2','first_name', 'last_name']
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = [
+            "id",
+            "email",
+            "username",
+            "gender",
+            "phone_number",
+            "date_of_birth",
+            "profile_picture",
+            "password",
+            "password2",
+            "created_at",
+            "updated_at",
+        ]
+        extra_kwargs = {
+            "id" : {"read_only": True},
+            "profile_picture": {"required": False},
+            "phone_number": {"required": False},
+            "gender": {"required": False},
+            "date_of_birth": {"required": False},
+        }
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -19,40 +47,19 @@ class SignupSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-        validated_data.pop('password2')  # Remove password2 since it's not needed for user creation
-        user = CustomUser.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', '')
-        )
-        user.set_password(validated_data['password'])  # Hash the password
+        validated_data.pop("password2")
+        password = validated_data.pop("password")
+        user = CustomUser.objects.create(**validated_data)
+        user.set_password(password)
         user.save()
         return user
     
 
-# FOR LOGIN
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(required = True)
+    email = serializers.CharField(required = True)
     password = serializers.CharField(required=True,write_only=True)
 
-    def validate_username(self,value):
-        """
-        Custom validation to handle both email and username.
-        If the input is an email, it will return the email.
-        If the input is a username, it will return the username.
-        """
-        if '@' in value:  # Check if it's an email
-            try:
-                EmailValidator()(value)
-                return value
-            except ValidationError:
-                raise serializers.ValidationError("use a valid email or use a username")
-        return value
 
-
-#for updating profile
 class UpdateProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=False)
     profile_picture = serializers.ImageField(required=False, allow_null=True)
