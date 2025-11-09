@@ -6,3 +6,5 @@ __pycache__/
 desktop.ini
 .env
 media/
+.vscode
+
