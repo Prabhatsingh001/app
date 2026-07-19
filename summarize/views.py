@@ -1,3 +1,4 @@
-from django.shortcuts import render
+"""Views for the summarize app."""
+
 
 # Create your views here.

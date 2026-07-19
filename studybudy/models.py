@@ -1,46 +1,29 @@
-"""studybudy.models
+"""Models for the StudyBuddy user and profile data."""
 
-This module defines the project's custom user model and its manager.
-
-Classes
-- CustomUserManager: Manager that creates regular users and superusers using
-    email as the unique identifier.
-- CustomUser: Custom user model that extends Django's AbstractUser to use an
-    email-based login and store additional profile fields (phone number,
-    date of birth, profile picture, etc.).
-
-Notes
-- The project sets `AUTH_USER_MODEL = 'studybudy.CustomUser'` in
-    `app/settings.py`. The manager's `create_user` and `create_superuser`
-    methods are intended to be used by create commands and tests.
-"""
-
-from django.db import models
-from django.contrib.auth.models import AbstractUser,BaseUserManager
-from django.utils.translation import gettext_lazy as _
-from phonenumber_field.modelfields import PhoneNumberField
 from datetime import date
 
-class CustomUserManager(BaseUserManager):
-    """Manager for CustomUser.
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
 
-    Provides helper methods to create regular users and superusers where
-    the email field is used as the USERNAME_FIELD.
-    """
+
+class CustomUserManager(BaseUserManager):
+    """Manager for creating StudyBuddy users."""
 
     def create_user(self, email, password, **extra_fields):
-        """Create and return a user with the given email and password.
+        """Create and return a regular user.
 
         Args:
-            email (str): The user's email address (required).
-            password (str): Plain-text password for the new user.
-            **extra_fields: Additional model fields for the user.
+            email: User email address.
+            password: Plain-text password for the new account.
+            **extra_fields: Additional model fields.
 
         Returns:
-            CustomUser: The saved user instance.
+            CustomUser: The created user instance.
 
         Raises:
-            ValueError: If `email` is not provided.
+            ValueError: If email is not provided.
         """
         if not email:
             raise ValueError(_("Email Should be Provided"))
@@ -53,8 +36,7 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, password, **extra_fields):
         """Create and return a superuser.
 
-        Ensures the created user has `is_staff`, `is_superuser` and
-        `is_active` set to True.
+        Ensures the created user has staff, superuser, and active flags set.
         """
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
@@ -67,30 +49,29 @@ class CustomUserManager(BaseUserManager):
         if extra_fields.get("is_active") is not True:
             raise ValueError(_("super user should have is_active as True"))
         return self.create_user(email, password, **extra_fields)
-    
+
+
 class GenderChoices(models.TextChoices):
-    MALE = 'M', 'Male'
-    FEMALE = 'F', 'Female'
-    OTHER = 'O', 'Other'
+    """Available gender choices for user profiles."""
+
+    MALE = "M", "Male"
+    FEMALE = "F", "Female"
+    OTHER = "O", "Other"
+
 
 class CustomUser(AbstractUser):
-    """Custom user model.
-
-    Extends Django's AbstractUser but uses `email` as the unique
-    identifier (login field). Additional profile fields are provided
-    such as `phone_number`, `date_of_birth` and `profile_picture`.
-
-    Important attributes:
-    - USERNAME_FIELD = 'email'  # login field
-    - REQUIRED_FIELDS = ['username']  # required when creating superusers
-    """
+    """Custom user model that authenticates by email."""
 
     email = models.EmailField(_("your Email"), unique=True, max_length=80)
     username = models.CharField(_("username"), max_length=20, unique=True)
-    gender = models.CharField(max_length=1, choices=GenderChoices.choices, default=GenderChoices.OTHER)
+    gender = models.CharField(
+        max_length=1, choices=GenderChoices.choices, default=GenderChoices.OTHER
+    )
     phone_number = PhoneNumberField(null=True, blank=True)
     date_of_birth = models.DateField(default=date(1999, 10, 19), null=True, blank=True)
-    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    profile_picture = models.ImageField(
+        upload_to="profile_pictures/", null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -100,6 +81,23 @@ class CustomUser(AbstractUser):
     objects = CustomUserManager()  # type: ignore
 
     def __str__(self):
-        """Return a compact string representation for debugging/logging."""
+        """Return the user email for display and debugging."""
+
         return f"<{self.email}>"
 
+
+class Profile(models.Model):
+    """Additional profile information linked to a user."""
+
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name="profile"
+    )
+    roll_number = models.CharField(max_length=64, blank=True, null=True)
+    course = models.CharField(max_length=128, null=True, blank=True)
+    sem = models.PositiveIntegerField(default=1)
+    bio = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        """Return a human-readable profile label."""
+
+        return f"{self.user.username} profile"

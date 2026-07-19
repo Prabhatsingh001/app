@@ -1,14 +1,19 @@
+"""API views for uploading notes and question papers."""
+
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.decorators import api_view,permission_classes
-from .models import Notes,QuestionPaper
-from .serializers import NotesSerializer,QuestionPaperSerializer
-from rest_framework.permissions import AllowAny, IsAuthenticated,IsAuthenticatedOrReadOnly
+
+from .models import Notes, QuestionPaper
+from .serializers import NotesSerializer, QuestionPaperSerializer
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_note(request):
+    """Create a new note for the authenticated user."""
+
     serializer = NotesSerializer(data=request.data)
     if serializer.is_valid():
         # Associate the logged-in user with the note
@@ -17,9 +22,11 @@ def create_note(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_question_paper(request):
+    """Create a new question paper for the authenticated user."""
+
     serializer = QuestionPaperSerializer(data=request.data)
     if serializer.is_valid():
         # Save the question paper if the data is valid
@@ -28,18 +35,21 @@ def create_question_paper(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def view_notes(request):
+    """Return all uploaded notes."""
+
     notes = Notes.objects.all()
     serializer = NotesSerializer(notes, many=True)
     return Response(serializer.data)
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_question_paper(request):
+    """Return all uploaded question papers."""
+
     question_paper = QuestionPaper.objects.all()
     serializer = QuestionPaperSerializer(question_paper, many=True)
     return Response(serializer.data)
-

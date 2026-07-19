@@ -1,3 +1,4 @@
-from django.contrib import admin
+"""Admin configuration for the summarize app."""
+
 
 # Register your models here.
